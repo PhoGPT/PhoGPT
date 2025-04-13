@@ -5,12 +5,11 @@ from streamlit.components.v1 import html
 import base64
 import datetime
 import markdown
+from dotenv import load_dotenv
+import hashlib
 
-try:
-    import google.generativeai as genai
-except ModuleNotFoundError:
-    st.error("⚠️ Thư viện 'google-generativeai' chưa được cài đặt. Hãy chạy: pip install google-generativeai")
-    st.stop()
+# Tải các biến môi trường từ file .env
+load_dotenv()
 
 # PHẢI đặt set_page_config trước bất kỳ lệnh streamlit nào khác
 st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="assets/logo.png", layout="centered")
@@ -18,16 +17,20 @@ st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="assets/logo.png", lay
 # Đặt tên mặc định cho AI
 DEFAULT_AI_NAME = "PhoGPT"
 
-# Load Google API Key từ secrets.toml
-try:
-    api_key = st.secrets["GOOGLE_API_KEY"]
-except KeyError:
-    st.error("⚠️ Không tìm thấy GOOGLE_API_KEY trong secrets.toml.")
+# Lấy API Key từ file .env
+api_key = os.getenv("GOOGLE_API_KEY")
+
+if not api_key:
+    st.error("⚠️ Không tìm thấy GOOGLE_API_KEY trong file .env.")
     st.stop()
 
 # Cấu hình Gemini API
 try:
+    import google.generativeai as genai
     genai.configure(api_key=api_key)
+except ModuleNotFoundError:
+    st.error("⚠️ Thư viện 'google-generativeai' chưa được cài đặt. Hãy chạy: pip install google-generativeai")
+    st.stop()
 except Exception as e:
     st.error(f"❌ Lỗi cấu hình API: {e}")
     st.stop()
@@ -107,94 +110,112 @@ st.markdown(background_style, unsafe_allow_html=True)
 st.title(f"🤖 {ai_name}")
 st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI thông minh từ Gemini")
 
-# Kiểm tra nếu người dùng đã đăng nhập
-if 'user_logged_in' not in st.session_state:
-    st.session_state['user_logged_in'] = False
+# Chức năng đăng nhập và đăng ký
+def create_user_account(username, password):
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    # Lưu thông tin tài khoản vào session_state
+    st.session_state['user'] = {'username': username, 'password': hashed_password}
+    st.success(f"Tạo tài khoản thành công cho {username}")
 
-# Nếu chưa đăng nhập, yêu cầu nhập tên người dùng
-if not st.session_state['user_logged_in']:
-    st.text_input("Vui lòng nhập tên của bạn:", key="username_input")
-    if st.button("Đăng nhập"):
-        if st.session_state.get("username_input"):
-            st.session_state['user_logged_in'] = True
-            st.session_state['username'] = st.session_state.get("username_input")
-            st.experimental_rerun()  # Làm mới trang sau khi đăng nhập thành công
+def login_user(username, password):
+    if 'user' not in st.session_state:
+        st.error("⚠️ Bạn chưa có tài khoản. Vui lòng đăng ký trước.")
+        return False
 
-# Nếu đã đăng nhập, hiển thị nội dung
-if st.session_state['user_logged_in']:
-    # Hiển thị tên người dùng
-    st.markdown(f"**Xin chào, {st.session_state['username']}!**")
+    stored_password = st.session_state['user']['password']
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
 
-    # Nút xóa hội thoại
-    if st.sidebar.button("🧹 Xóa hội thoại"):
-        st.session_state.history = []
+    if stored_password == hashed_password:
+        st.session_state['logged_in'] = True
+        st.success(f"Chào mừng trở lại, {username}!")
+        return True
+    else:
+        st.error("⚠️ Sai tên đăng nhập hoặc mật khẩu.")
+        return False
 
-    # Nút bắt đầu chat mới
-    if st.sidebar.button("💬 Đoạn chat mới"):
-        if st.session_state.get("history"):
-            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-            st.session_state.chat_logs.insert(0, (timestamp, st.session_state.history.copy()))
-        st.session_state.history = []
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = False
+
+# Nếu chưa đăng nhập, yêu cầu đăng nhập
+if not st.session_state['logged_in']:
+    st.sidebar.header("Đăng nhập")
+    username = st.sidebar.text_input("Tên đăng nhập")
+    password = st.sidebar.text_input("Mật khẩu", type="password")
+    
+    login_button = st.sidebar.button("Đăng nhập")
+    if login_button:
+        if login_user(username, password):
+            st.experimental_rerun()  # Làm mới trang để chuyển đến nội dung chính
+
+    st.sidebar.header("Chưa có tài khoản?")
+    register_username = st.sidebar.text_input("Tên đăng nhập (Đăng ký mới)")
+    register_password = st.sidebar.text_input("Mật khẩu (Đăng ký mới)", type="password")
+    register_button = st.sidebar.button("Đăng ký")
+
+    if register_button:
+        create_user_account(register_username, register_password)
+        st.experimental_rerun()  # Làm mới trang để đăng ký mới thành công
+
+# Nút xóa hội thoại
+if st.sidebar.button("🧹 Xóa hội thoại"):
+    st.session_state.history = []
+
+# Nút bắt đầu chat mới
+if st.sidebar.button("💬 Đoạn chat mới"):
+    if st.session_state.get("history"):
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+        st.session_state.chat_logs.insert(0, (timestamp, st.session_state.history.copy()))
+    st.session_state.history = []
+    try:
+        model = genai.GenerativeModel(MODEL_NAME)
+        st.session_state.chat = model.start_chat()
+    except Exception as e:
+        st.error(f"❌ Không thể khởi tạo mô hình mới: {e}")
+
+# Nút tải đoạn chat
+if st.sidebar.button("📥 Tải đoạn chat"):
+    if st.session_state.get("history"):
+        filename = f"chat_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        content = "\n".join([f"{r.upper()}: {m}" for r, m in st.session_state.history])
+        b64 = base64.b64encode(content.encode()).decode()
+        href = f'<a href="data:file/txt;base64,{b64}" download="{filename}">📄 Tải xuống {filename}</a>'
+        st.sidebar.markdown(href, unsafe_allow_html=True)
+
+# Khởi tạo model chat
+if "chat" not in st.session_state:
+    try:
+        model = genai.GenerativeModel(MODEL_NAME)
+        st.session_state.chat = model.start_chat()
+    except Exception as e:
+        st.error(f"❌ Không thể khởi tạo mô hình Gemini: {e}")
+        st.stop()
+
+# Khởi tạo history nếu chưa có
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+# Hiển thị lịch sử hội thoại
+avatar_user = "https://i.pinimg.com/236x/5e/e0/82/5ee082781b8c41406a2a50a0f32d6aa6.jpg"
+avatar_ai = "https://scontent.fhph2-1.fna.fbcdn.net/v/t39.30808-6/490392190_678654707977227_1765116453897262223_n.jpg"
+
+for role, msg in st.session_state.history:
+    avatar = avatar_user if role == "user" else avatar_ai
+    with st.container():
+        msg_html = markdown.markdown(msg)
+        st.markdown(f'''
+            <div class="chat-box">
+                <img class="avatar" src="{avatar}" alt="avatar" />
+                <div>{msg_html}</div>
+            </div>
+        ''', unsafe_allow_html=True)
+
+# Nhập tin nhắn người dùng
+user_input = st.chat_input(f"Nhập câu hỏi cho {ai_name}...")
+
+if user_input:
+    st.session_state.history.append(("user", user_input))
+    with st.spinner(f"🔄 {ai_name} đang phản hồi..."):
         try:
-            model = genai.GenerativeModel(MODEL_NAME)
-            st.session_state.chat = model.start_chat()
-        except Exception as e:
-            st.error(f"❌ Không thể khởi tạo mô hình mới: {e}")
-
-    # Nút tải đoạn chat
-    if st.sidebar.button("📥 Tải đoạn chat"):
-        if st.session_state.get("history"):
-            filename = f"chat_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-            content = "\n".join([f"{r.upper()}: {m}" for r, m in st.session_state.history])
-            b64 = base64.b64encode(content.encode()).decode()
-            href = f'<a href="data:file/txt;base64,{b64}" download="{filename}">📄 Tải xuống {filename}</a>'
-            st.sidebar.markdown(href, unsafe_allow_html=True)
-
-    # Khởi tạo model chat
-    if "chat" not in st.session_state:
-        try:
-            model = genai.GenerativeModel(MODEL_NAME)
-            st.session_state.chat = model.start_chat()
-        except Exception as e:
-            st.error(f"❌ Không thể khởi tạo mô hình Gemini: {e}")
-            st.stop()
-
-    # Khởi tạo history nếu chưa có
-    if "history" not in st.session_state:
-        st.session_state.history = []
-
-    # Hiển thị lịch sử hội thoại
-    avatar_user = "https://i.pinimg.com/236x/5e/e0/82/5ee082781b8c41406a2a50a0f32d6aa6.jpg"
-    avatar_ai = "https://scontent.fhph2-1.fna.fbcdn.net/v/t39.30808-6/490392190_678654707977227_1765116453897262223_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=127cfc&_nc_ohc=llepRsrx304Q7kNvwGTUEHC&_nc_oc=AdlQWumfAI8cp0RzFwaHFOkm2IDY8d8mIbOzmQ0Ufp3gT7dVJ-15ytX03w0x1n-nOWzYl_gchD0SB5djyvj32P6e&_nc_zt=23&_nc_ht=scontent.fhph2-1.fna&_nc_gid=oWRsYsffWetuNZ-BZDxjGw&oh=00_AfEtc4wygalKzz8d9-lT7IyE3HIx1TLzhZXg-upq8NwjVA&oe=68012025"
-
-    for role, msg in st.session_state.history:
-        avatar = avatar_user if role == "user" else avatar_ai
-        with st.container():
-            msg_html = markdown.markdown(msg)
-            st.markdown(f'''
-                <div class="chat-box">
-                    <img class="avatar" src="{avatar}" alt="avatar" />
-                    <div>{msg_html}</div>
-                </div>
-            ''', unsafe_allow_html=True)
-
-    # Nhập tin nhắn người dùng
-    user_input = st.chat_input(f"Nhập câu hỏi cho {ai_name}...")
-
-    if user_input:
-        st.session_state.history.append(("user", user_input))
-        with st.spinner(f"🔄 {ai_name} đang phản hồi..."):
-            try:
-                response = st.session_state.chat.send_message(user_input)
-                reply = response.text.strip().rstrip("|")
-                st.session_state.history.append(("assistant", reply))
-
-                if any(ext in reply for ext in [".jpg", ".png", ".jpeg"]):
-                    for word in reply.split():
-                        if word.startswith("http") and any(ext in word for ext in [".jpg", ".png", ".jpeg"]):
-                            st.image(word, caption="Hình ảnh liên quan", use_column_width=True)
-
-            except Exception as e:
-                error_msg = f"❌ Lỗi: {e}"
-                st.error(error_msg)
-                st.session_state.history.append(("assistant", error_msg))
+            response = st.session_state.chat.send_message(user_input)
+            reply = response.text.strip().rstrip("|")
+            st.session
