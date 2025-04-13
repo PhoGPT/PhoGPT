@@ -3,7 +3,6 @@
 
 import streamlit as st
 import os
-from dotenv import load_dotenv
 from PIL import Image
 from streamlit.components.v1 import html
 import base64
@@ -21,12 +20,11 @@ st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="assets/logo.png", lay
 # Đặt tên mặc định cho AI
 DEFAULT_AI_NAME = "PhoGPT"
 
-# Load Google API Key
-load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY", "")
+# Load Google API Key từ secrets.toml
+api_key = st.secrets.get("GOOGLE_API_KEY", "")
 
 if not api_key:
-    st.error("⚠️ Không tìm thấy GOOGLE_API_KEY trong secrets.toml hoặc biến môi trường.")
+    st.error("⚠️ Không tìm thấy GOOGLE_API_KEY trong secrets.toml.")
     st.stop()
 
 # Cấu hình Gemini API
@@ -50,15 +48,21 @@ if "chat" not in st.session_state:
 
 # Sidebar cài đặt
 st.sidebar.title("⚙️ Cài đặt")
-ai_name = st.sidebar.text_input("Tên trợ lý AI", value=st.session_state.get("ai_name", DEFAULT_AI_NAME))
-st.session_state.ai_name = ai_name
+ai_name = DEFAULT_AI_NAME
+
+# Toggle cho dark mode
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
+
+dark_mode = st.sidebar.toggle("🌙 Chế độ tối", value=st.session_state.dark_mode)
+st.session_state.dark_mode = dark_mode
 
 # CSS tùy chỉnh giao diện + hiệu ứng
 hour = datetime.datetime.now().hour
-if 6 <= hour < 18:
-    bg_color = "linear-gradient(135deg, #f5f7fa, #c3cfe2)"
+if dark_mode:
+    bg_color = "linear-gradient(135deg, #2c2c2c, #3a3a3a)"
 else:
-    bg_color = "linear-gradient(135deg, #1e1e1e, #2b2b2b)"
+    bg_color = "linear-gradient(135deg, #f5f7fa, #c3cfe2)"
 
 background_style = f"""
     <style>
@@ -124,8 +128,8 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # Hiển thị lịch sử hội thoại
-avatar_user = "https://i.imgur.com/7q6cP1B.png"
-avatar_ai = "https://i.imgur.com/N5uCbDu.png"
+avatar_user = "https://i.pinimg.com/236x/5e/e0/82/5ee082781b8c41406a2a50a0f32d6aa6.jpg"
+avatar_ai = "https://scontent.fhph2-1.fna.fbcdn.net/v/t39.30808-6/490392190_678654707977227_1765116453897262223_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=127cfc&_nc_ohc=llepRsrx304Q7kNvwGTUEHC&_nc_oc=AdlQWumfAI8cp0RzFwaHFOkm2IDY8d8mIbOzmQ0Ufp3gT7dVJ-15ytX03w0x1n-nOWzYl_gchD0SB5djyvj32P6e&_nc_zt=23&_nc_ht=scontent.fhph2-1.fna&_nc_gid=oWRsYsffWetuNZ-BZDxjGw&oh=00_AfEtc4wygalKzz8d9-lT7IyE3HIx1TLzhZXg-upq8NwjVA&oe=68012025"
 
 for role, msg in st.session_state.history:
     avatar = avatar_user if role == "user" else avatar_ai
