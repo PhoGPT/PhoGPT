@@ -1,6 +1,3 @@
-# NOTE: This code assumes a Streamlit environment where streamlit is installed
-# Ensure you install required packages: streamlit, python-dotenv, google-generativeai, pillow
-
 import streamlit as st
 import os
 from dotenv import load_dotenv
@@ -21,18 +18,18 @@ st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="🤖", layout="center
 # Đặt tên mặc định cho AI
 DEFAULT_AI_NAME = "PhoGPT"
 
-# Load Google API Key
-load_dotenv()
-api_key = st.secrets["google"]["GOOGLE_API_KEY"]
-
-if not api_key:
-    st.error("⚠️ Chưa cấu hình GOOGLE_API_KEY. Vui lòng kiểm tra .env hoặc Secrets.")
+# Load Google API Key từ Secrets
+try:
+    api_key = st.secrets["google"]["GOOGLE_API_KEY"]
+except KeyError:
+    st.error("⚠️ Chưa cấu hình GOOGLE_API_KEY trong secrets.toml hoặc Streamlit Cloud secrets.")
     st.stop()
 
+# Cấu hình Google API
 genai.configure(api_key=api_key)
 
-# Chọn mô hình Gemini 1.5 (phiên bản mượt hơn)
-MODEL_NAME = "models/gemini-1.5-v2"  # Đây là mô hình ổn định, mượt mà hơn
+# Chọn mô hình Gemini (mặc định là mô hình mới nhất có hỗ trợ generateContent)
+MODEL_NAME = "models/gemini-2.5-pro-exp-03-25"
 
 # Khởi tạo model chat
 if "chat" not in st.session_state:
@@ -121,11 +118,11 @@ background_style = f"""
     }}
     </style>
     <script>
-    const playSound = (type) => {{
+    const playSound = (type) => {
         const audio = new Audio(type === 'user' ? 'https://assets.mixkit.co/sfx/preview/mixkit-player-jump-377.wav' : 'https://assets.mixkit.co/sfx/preview/mixkit-confirmation-tone-2863.wav');
         audio.volume = 0.4;
         audio.play();
-    }}
+    }
     window.playSound = playSound;
     </script>
 """
