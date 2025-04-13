@@ -11,7 +11,7 @@ except ModuleNotFoundError:
     st.stop()
 
 # Cấu hình trang
-st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="assets/logo.png", layout="centered")
+st.set_page_config(page_title=" PhoGPT AI", page_icon="assets/logo.png", layout="centered")
 
 # Load biến môi trường nếu cần
 load_dotenv()
@@ -45,7 +45,7 @@ selected_voice = st.sidebar.selectbox("🔊 Chọn giọng", ["Nữ chuẩn", "N
 # Logo & tiêu đề
 st.image("assets/logo.png", width=120)
 st.title(f"🤖 {ai_name}")
-st.caption("🧠 Trợ lý AI thông minh từ Gemini")
+st.caption("🧠 Trợ lý AI thông minh của NguyenVu")
 
 # Nút reset
 if st.sidebar.button("🧹 Xóa hội thoại"):
@@ -56,8 +56,8 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # Giao diện chat
-avatar_user = "https://i.imgur.com/7q6cP1B.png"
-avatar_ai = "https://i.imgur.com/N5uCbDu.png"
+avatar_user = "https://i.pinimg.com/236x/5e/e0/82/5ee082781b8c41406a2a50a0f32d6aa6.jpg"
+avatar_ai = "assets/logo.png"
 
 for role, msg in st.session_state.history:
     with st.container():
