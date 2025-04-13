@@ -6,7 +6,11 @@ import datetime
 import google.generativeai as genai
 
 # PHẢI đặt set_page_config trước bất kỳ lệnh streamlit nào khác
-st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="logo.png", layout="centered")
+st.set_page_config(
+    page_title="🤖 PhoGPT AI", 
+    page_icon="assets/logo.png",  # Đặt logo từ thư mục assets
+    layout="centered"
+)
 
 # Đặt tên mặc định cho AI
 DEFAULT_AI_NAME = "PhoGPT"
@@ -114,7 +118,8 @@ background_style = f"""
 
 st.markdown(background_style, unsafe_allow_html=True)
 
-# Tiêu đề chính
+# Hiển thị logo và tiêu đề chính
+st.image("assets/logo.png", width=150)  # Thay đổi kích thước của logo tùy ý
 st.title(f"🤖 {ai_name}")
 st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI thông minh từ Gemini")
 
