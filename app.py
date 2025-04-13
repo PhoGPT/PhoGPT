@@ -1,34 +1,24 @@
-# NOTE: This code assumes a Streamlit environment where streamlit is installed
-# Ensure you install required packages: streamlit, python-dotenv, google-generativeai, pillow
-
-import streamlit as st
-import os
+streamlit as st
+import toml
+import datetime
+import google.generativeai as genai
 from dotenv import load_dotenv
 from PIL import Image
-from streamlit.components.v1 import html
-import base64
-import datetime
-
-try:
-    import google.generativeai as genai
-except ModuleNotFoundError:
-    st.error("⚠️ Thư viện 'google-generativeai' chưa được cài đặt. Hãy chạy: pip install google-generativeai")
-    st.stop()
 
 # PHẢI đặt set_page_config trước bất kỳ lệnh streamlit nào khác
 st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="🤖", layout="centered")
 
-# Đặt tên mặc định cho AI
-DEFAULT_AI_NAME = "PhoGPT"
+# Đọc cấu hình từ file secrets.toml
+secrets = toml.load('secrets.toml')
 
-# Load Google API Key
-load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY", "")
+# Lấy API Key từ secrets.toml
+api_key = secrets.get("google", {}).get("GOOGLE_API_KEY", "")
 
 if not api_key:
-    st.error("⚠️ Chưa cấu hình GOOGLE_API_KEY. Vui lòng kiểm tra .env hoặc Secrets.")
+    st.error("⚠️ Chưa cấu hình GOOGLE_API_KEY trong secrets.toml. Vui lòng kiểm tra lại.")
     st.stop()
 
+# Cấu hình Google Generative AI
 genai.configure(api_key=api_key)
 
 # Chọn mô hình Gemini (mặc định là mô hình mới nhất có hỗ trợ generateContent)
@@ -45,13 +35,11 @@ if "chat" not in st.session_state:
 
 # Sidebar cài đặt
 st.sidebar.title("⚙️ Cài đặt")
-ai_name = st.sidebar.text_input("Tên trợ lý AI", value=st.session_state.get("ai_name", DEFAULT_AI_NAME))
-dark_mode = st.sidebar.toggle("🌙 Dark mode")
-selected_voice = st.sidebar.selectbox("🔊 Chọn giọng phản hồi", ["Nữ chuẩn", "Nam trầm", "Trẻ trung"])
+ai_name = st.sidebar.text_input("Tên trợ lý AI", value="PhoGPT")
+dark_mode = st.sidebar.checkbox("🌙 Dark mode", value=False)
 st.session_state.ai_name = ai_name
 
 # CSS tùy chỉnh giao diện + hiệu ứng
-# Background theo giờ
 hour = datetime.datetime.now().hour
 if 6 <= hour < 18:
     bg_color = "linear-gradient(135deg, #f5f7fa, #c3cfe2)"
