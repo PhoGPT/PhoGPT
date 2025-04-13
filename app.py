@@ -1,31 +1,18 @@
 import streamlit as st
 import os
-import pyttsx3
 from dotenv import load_dotenv
 import google.generativeai as genai
-import platform
 
-# Kiểm tra môi trường và quyết định có sử dụng TTS hay không
-is_streamlit_cloud = "STREAMLIT_SERVER" in os.environ  # Kiểm tra môi trường Streamlit Cloud
-
-# Nếu không phải trên Streamlit Cloud, tiếp tục khởi tạo TTS
-if not is_streamlit_cloud:
-    import pyttsx3
-    engine = pyttsx3.init()
-    def speak(text):
-        engine.say(text)
-        engine.runAndWait()
-
-# Load API key
+# Load API key cho Gemini (nếu có)
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", "")))
 
-# Khởi tạo Gemini
+# Khởi tạo Gemini Chat nếu chưa có
 if "chat" not in st.session_state:
     model = genai.GenerativeModel("gemini-pro")
     st.session_state.chat = model.start_chat()
 
-# NEW: Cho phép đặt tên AI
+# Tuỳ chỉnh AI
 st.sidebar.header("⚙️ Tuỳ chỉnh")
 ai_name = st.sidebar.text_input("PhoGPT", value=st.session_state.get("ai_name", "PhoGPT"))
 st.session_state.ai_name = ai_name
@@ -36,9 +23,6 @@ st.set_page_config(page_title=f"🤖 {ai_name} AI", page_icon="🤖", layout="ce
 # Header
 st.title(f"🤖 {ai_name}")
 st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI powered by Gemini")
-
-# Tuỳ chọn đọc to
-tts_enabled = st.checkbox("🔊 Luôn đọc to phản hồi", value=False)
 
 # Xóa hội thoại
 if st.button("🧹 Xóa hội thoại"):
@@ -69,8 +53,9 @@ if user_input:
                 st.markdown(reply)
                 st.session_state.history.append(("assistant", reply))
 
-                if tts_enabled and not is_streamlit_cloud:  # Chỉ đọc to nếu không phải trên Streamlit Cloud
-                    speak(reply)
+                # Kiểm tra nếu phản hồi có liên kết hình ảnh
+                if "http" in reply and (".jpg" in reply or ".png" in reply or ".jpeg" in reply):
+                    st.image(reply, caption="Hình ảnh liên quan", use_column_width=True)
 
             except Exception as e:
                 error_msg = f"❌ Lỗi: {e}"
