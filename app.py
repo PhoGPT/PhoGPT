@@ -1,28 +1,28 @@
 import streamlit as st
-import toml
-import datetime
-import google.generativeai as genai
+import os
 from dotenv import load_dotenv
 from PIL import Image
+import datetime
+import google.generativeai as genai
 
 # PHẢI đặt set_page_config trước bất kỳ lệnh streamlit nào khác
-st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="logo.png", layout="centered")
 
-# Đọc cấu hình từ file secrets.toml
-secrets = toml.load('secrets.toml')
+# Đặt tên mặc định cho AI
+DEFAULT_AI_NAME = "PhoGPT"
 
-# Lấy API Key từ secrets.toml
-api_key = secrets.get("google", {}).get("GOOGLE_API_KEY", "")
-
-if not api_key:
-    st.error("⚠️ Chưa cấu hình GOOGLE_API_KEY trong secrets.toml. Vui lòng kiểm tra lại.")
+# Lấy API key từ secrets.toml
+try:
+    api_key = st.secrets["google"]["GOOGLE_API_KEY"]
+except KeyError:
+    st.error("⚠️ Không tìm thấy GOOGLE_API_KEY trong secrets.toml.")
     st.stop()
 
-# Cấu hình Google Generative AI
+# Cấu hình mô hình Google AI
 genai.configure(api_key=api_key)
 
 # Chọn mô hình Gemini (mặc định là mô hình mới nhất có hỗ trợ generateContent)
-MODEL_NAME = "models/gemini-2.5-pro-exp-03-25"
+MODEL_NAME = "models/gemini-2.5-pro-exp-03-25"  # Kiểm tra lại tên mô hình
 
 # Khởi tạo model chat
 if "chat" not in st.session_state:
@@ -35,11 +35,13 @@ if "chat" not in st.session_state:
 
 # Sidebar cài đặt
 st.sidebar.title("⚙️ Cài đặt")
-ai_name = st.sidebar.text_input("Tên trợ lý AI", value="PhoGPT")
-dark_mode = st.sidebar.checkbox("🌙 Dark mode", value=False)
+ai_name = st.sidebar.text_input("Tên trợ lý AI", value=st.session_state.get("ai_name", DEFAULT_AI_NAME))
+dark_mode = st.sidebar.checkbox("🌙 Dark mode")
+selected_voice = st.sidebar.selectbox("🔊 Chọn giọng phản hồi", ["Nữ chuẩn", "Nam trầm", "Trẻ trung"])
 st.session_state.ai_name = ai_name
 
 # CSS tùy chỉnh giao diện + hiệu ứng
+# Background theo giờ
 hour = datetime.datetime.now().hour
 if 6 <= hour < 18:
     bg_color = "linear-gradient(135deg, #f5f7fa, #c3cfe2)"
@@ -108,14 +110,6 @@ background_style = f"""
         color: #f0f0f0;
     }}
     </style>
-    <script>
-    function playSound(type) {{
-        const audio = new Audio(type === 'user' ? 'https://assets.mixkit.co/sfx/preview/mixkit-player-jump-377.wav' : 'https://assets.mixkit.co/sfx/preview/mixkit-confirmation-tone-2863.wav');
-        audio.volume = 0.4;
-        audio.play();
-    }}
-    window.playSound = playSound;
-    </script>
 """
 
 st.markdown(background_style, unsafe_allow_html=True)
@@ -146,11 +140,10 @@ for role, msg in st.session_state.history:
                 <img class="avatar" src="{avatar}" alt="avatar" />
                 <div class="{typing_class}">{msg}</div>
             </div>
-            <script>playSound("{role}");</script>
         ''', unsafe_allow_html=True)
 
 # Nhập tin nhắn người dùng
-user_input = st.chat_input(f"Nhập câu hỏi cho {ai_name}...")
+user_input = st.text_input(f"Nhập câu hỏi cho {ai_name}...")
 
 if user_input:
     st.session_state.history.append(("user", user_input))
