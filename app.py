@@ -1,18 +1,21 @@
 import streamlit as st
-from gtts import gTTS
 import os
+import pyttsx3
 from dotenv import load_dotenv
 import google.generativeai as genai
+
+# Cấu hình giao diện Streamlit trước khi làm gì khác
+st.set_page_config(page_title=f"🤖 {ai_name} AI", page_icon="🤖", layout="centered")
 
 # Load API key
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", "")))
 
-# TTS - Khởi tạo (sử dụng gTTS thay vì pyttsx3)
+# TTS - Khởi tạo
+engine = pyttsx3.init()
 def speak(text):
-    tts = gTTS(text, lang='vi')  # Chọn ngôn ngữ là tiếng Việt
-    tts.save("response.mp3")
-    os.system("mpg321 response.mp3")  # Phát âm thanh (có thể thay đổi theo hệ điều hành)
+    engine.say(text)
+    engine.runAndWait()
 
 # Khởi tạo Gemini
 if "chat" not in st.session_state:
@@ -23,22 +26,6 @@ if "chat" not in st.session_state:
 st.sidebar.header("⚙️ Tuỳ chỉnh")
 ai_name = st.sidebar.text_input("PhoGPT", value=st.session_state.get("ai_name", "PhoGPT"))
 st.session_state.ai_name = ai_name
-
-# Cấu hình giao diện Streamlit
-st.set_page_config(page_title=f"🤖 {ai_name} AI", page_icon="🤖", layout="centered")
-
-st.markdown("""
-    <style>
-        .st-emotion-cache-13ln4jf {padding-top: 2rem;}
-        .chat-message {
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 0.5rem;
-        }
-        .user {background-color: #dff0d8;}
-        .bot {background-color: #f5f5f5;}
-    </style>
-""", unsafe_allow_html=True)
 
 # Header
 st.title(f"🤖 {ai_name}")
