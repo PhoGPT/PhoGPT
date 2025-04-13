@@ -35,7 +35,7 @@ except Exception as e:
     st.stop()
 
 # Chọn mô hình Gemini ổn định
-MODEL_NAME = "models/gemini-1.5-pro-latest"
+MODEL_NAME = "models/gemini-pro"
 
 # Khởi tạo model chat
 if "chat" not in st.session_state:
@@ -54,12 +54,15 @@ ai_name = DEFAULT_AI_NAME
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
-dark_mode = st.sidebar.toggle("🌙 Chế độ tối", value=st.session_state.dark_mode)
-st.session_state.dark_mode = dark_mode
+# Sử dụng radio để chọn chế độ sáng/tối
+dark_mode = st.sidebar.radio("Chọn chế độ", options=["Sáng", "Tối"], index=1 if st.session_state.dark_mode else 0)
+
+# Cập nhật trạng thái chế độ tối
+st.session_state.dark_mode = dark_mode == "Tối"
 
 # CSS tùy chỉnh giao diện + hiệu ứng
 hour = datetime.datetime.now().hour
-if dark_mode:
+if st.session_state.dark_mode:
     bg_color = "linear-gradient(135deg, #2c2c2c, #3a3a3a)"
 else:
     bg_color = "linear-gradient(135deg, #f5f7fa, #c3cfe2)"
@@ -85,6 +88,8 @@ background_style = f"""
         display: flex;
         align-items: flex-start;
         gap: 1rem;
+        word-wrap: break-word; /* Cho phép văn bản xuống dòng tự động */
+        white-space: pre-wrap; /* Giữ khoảng trắng trong văn bản */
     }}
     .avatar {{
         width: 40px;
@@ -110,6 +115,14 @@ background_style = f"""
         from, to {{ border-color: transparent }}
         50% {{ border-color: orange }}
     }}
+    .choppy {{ 
+        animation: choppy 1.5s steps(1, end) infinite; 
+    }}
+    @keyframes choppy {{
+        0% {{ content: "|"; }}
+        50% {{ content: ""; }}
+        100% {{ content: "|"; }}
+    }}
     </style>
 """
 
@@ -117,7 +130,7 @@ st.markdown(background_style, unsafe_allow_html=True)
 
 # Tiêu đề chính
 st.title(f"🤖 {ai_name}")
-st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI thông minh từ NguyenVu")
+st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI thông minh từ NguyVu")
 
 # Nút xóa hội thoại
 if st.sidebar.button("🧹 Xóa hội thoại"):
@@ -147,13 +160,21 @@ for role, msg in st.session_state.history:
 user_input = st.chat_input(f"Nhập câu hỏi cho {ai_name}...")
 
 if user_input:
+    # Lưu câu hỏi của người dùng vào session state
     st.session_state.history.append(("user", user_input))
     with st.spinner(f"🔄 {ai_name} đang phản hồi..."):
         try:
+            # Đảm bảo rằng chat không bị gián đoạn và phản hồi ngay lập tức
             response = st.session_state.chat.send_message(user_input)
             reply = response.text
+
+            # Cập nhật lịch sử với phản hồi của AI
             st.session_state.history.append(("assistant", reply))
 
+            # Thêm dấu '|' chớp chớp vào cuối phản hồi của AI
+            st.session_state.history.append(("assistant", f"{reply} <span class='choppy'></span>"))
+
+            # Kiểm tra nếu có ảnh trong phản hồi
             if any(ext in reply for ext in [".jpg", ".png", ".jpeg"]):
                 for word in reply.split():
                     if word.startswith("http") and any(ext in word for ext in [".jpg", ".png", ".jpeg"]):
