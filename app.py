@@ -1,4 +1,4 @@
-streamlit as st
+import streamlit as st
 import toml
 import datetime
 import google.generativeai as genai
