@@ -4,11 +4,10 @@ import pyttsx3
 from dotenv import load_dotenv
 import google.generativeai as genai
 
-# NEW: Cho phép đặt tên AI
-st.sidebar.header("⚙️ Tuỳ chỉnh")
-ai_name = st.sidebar.text_input("PhoGPT", value="PhoGPT")  # Sử dụng giá trị mặc định tại đây
+# NEW: Khởi tạo ai_name trước khi cấu hình trang
+ai_name = "PhoGPT"  # Sử dụng giá trị mặc định cho ai_name
 
-# Cấu hình giao diện Streamlit trước khi làm gì khác
+# Cấu hình giao diện Streamlit (phải gọi trước mọi lệnh Streamlit khác)
 st.set_page_config(page_title=f"🤖 {ai_name} AI", page_icon="🤖", layout="centered")
 
 # Load API key
@@ -26,6 +25,9 @@ if "chat" not in st.session_state:
     model = genai.GenerativeModel("gemini-pro")
     st.session_state.chat = model.start_chat()
 
+# NEW: Cho phép đặt tên AI từ sidebar
+st.sidebar.header("⚙️ Tuỳ chỉnh")
+ai_name = st.sidebar.text_input("PhoGPT", value=st.session_state.get("ai_name", ai_name))
 st.session_state.ai_name = ai_name
 
 # Header
