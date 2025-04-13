@@ -7,13 +7,8 @@ import google.generativeai as genai
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", "")))
 
-# Kiểm tra các mô hình có sẵn
-models = genai.list_models()
-available_models = [model.name for model in models]
-st.write(f"Các mô hình có sẵn: {available_models}")
-
-# Sử dụng một mô hình hợp lệ
-model_name = "your_model_name_here"  # Thay thế với mô hình bạn muốn sử dụng (chẳng hạn "text-bison" nếu có)
+# Chọn mô hình thích hợp
+model_name = "models/gemini-2.5-pro-exp-03-25"  # Thay thế tên mô hình bạn muốn sử dụng
 
 if "chat" not in st.session_state:
     model = genai.GenerativeModel(model_name)
@@ -26,7 +21,7 @@ st.session_state.ai_name = ai_name
 
 # Header
 st.title(f"🤖 {ai_name}")
-st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI powered by Gemini")
+st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI powered by NguyenVu")
 
 # Xóa hội thoại
 if st.button("🧹 Xóa hội thoại"):
