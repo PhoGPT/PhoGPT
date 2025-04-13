@@ -1,6 +1,6 @@
 import streamlit as st
+from gtts import gTTS
 import os
-import pyttsx3
 from dotenv import load_dotenv
 import google.generativeai as genai
 
@@ -8,11 +8,11 @@ import google.generativeai as genai
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", "")))
 
-# TTS - Khởi tạo
-engine = pyttsx3.init()
+# TTS - Khởi tạo (sử dụng gTTS thay vì pyttsx3)
 def speak(text):
-    engine.say(text)
-    engine.runAndWait()
+    tts = gTTS(text, lang='vi')  # Chọn ngôn ngữ là tiếng Việt
+    tts.save("response.mp3")
+    os.system("mpg321 response.mp3")  # Phát âm thanh (có thể thay đổi theo hệ điều hành)
 
 # Khởi tạo Gemini
 if "chat" not in st.session_state:
