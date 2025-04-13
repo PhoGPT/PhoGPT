@@ -3,16 +3,20 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 
-# Cấu hình trang Streamlit - Đặt nó đầu tiên
+# Load API key cho Gemini
 load_dotenv()
-st.set_page_config(page_title=f"🤖 PhoGPT AI", page_icon="🤖", layout="centered")
-
-# Load API key cho Gemini (nếu có)
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", "")))
 
-# Khởi tạo Gemini Chat nếu chưa có
+# Kiểm tra các mô hình có sẵn
+models = genai.list_models()
+available_models = [model.name for model in models]
+st.write(f"Các mô hình có sẵn: {available_models}")
+
+# Sử dụng một mô hình hợp lệ
+model_name = "your_model_name_here"  # Thay thế với mô hình bạn muốn sử dụng (chẳng hạn "text-bison" nếu có)
+
 if "chat" not in st.session_state:
-    model = genai.GenerativeModel("gemini-pro")
+    model = genai.GenerativeModel(model_name)
     st.session_state.chat = model.start_chat()
 
 # Tuỳ chỉnh AI
