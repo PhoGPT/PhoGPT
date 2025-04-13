@@ -218,4 +218,13 @@ if user_input:
         try:
             response = st.session_state.chat.send_message(user_input)
             reply = response.text.strip().rstrip("|")
-            st.session
+            st.session_state.history.append(("assistant", reply))
+
+            if any(ext in reply for ext in [".jpg", ".png", ".jpeg"]):
+                for word in reply.split():
+                    if word.startswith("http"):
+                        st.image(word)
+            else:
+                st.write(reply)
+        except Exception as e:
+            st.error(f"❌ Lỗi khi gửi tin nhắn: {e}")
