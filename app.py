@@ -1,13 +1,20 @@
-# NOTE: This code assumes a Streamlit environment where streamlit is installed
-# Ensure you install required packages: streamlit, python-dotenv, google-generativeai, pillow
-
 import streamlit as st
 import os
+from dotenv import load_dotenv  # Thư viện để tải các biến môi trường từ file .env
 from PIL import Image
-from streamlit.components.v1 import html
-import base64
 import datetime
 
+# Load biến môi trường từ file .env
+load_dotenv()  # Đảm bảo các biến môi trường từ file .env được tải
+
+# Đọc API key từ biến môi trường
+api_key = os.getenv("GOOGLE_API_KEY")
+
+if not api_key:
+    st.error("⚠️ Không tìm thấy GOOGLE_API_KEY trong file .env. Vui lòng kiểm tra lại.")
+    st.stop()
+
+# Cài đặt Google API
 try:
     import google.generativeai as genai
 except ModuleNotFoundError:
@@ -20,13 +27,6 @@ st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="assets/logo.png", lay
 # Đặt tên mặc định cho AI
 DEFAULT_AI_NAME = "PhoGPT"
 
-# Load Google API Key từ secrets.toml
-try:
-    api_key = st.secrets["GOOGLE_API_KEY"]
-except KeyError:
-    st.error("⚠️ Không tìm thấy GOOGLE_API_KEY trong secrets.toml.")
-    st.stop()
-
 # Cấu hình Gemini API
 try:
     genai.configure(api_key=api_key)
@@ -35,7 +35,7 @@ except Exception as e:
     st.stop()
 
 # Chọn mô hình Gemini ổn định
-MODEL_NAME = "models/gemini-pro"
+MODEL_NAME = "models/gemini-1.5-pro-latest"
 
 # Khởi tạo model chat
 if "chat" not in st.session_state:
@@ -43,7 +43,7 @@ if "chat" not in st.session_state:
         model = genai.GenerativeModel(MODEL_NAME)
         st.session_state.chat = model.start_chat()
     except Exception as e:
-        st.error(f"❌ Không thể khởi tạo mô hình Gemini: {e}")
+        st.error(f"❌ Không thể khởi tạo mô hình GPT: {e}")
         st.stop()
 
 # Sidebar cài đặt
@@ -117,7 +117,7 @@ st.markdown(background_style, unsafe_allow_html=True)
 
 # Tiêu đề chính
 st.title(f"🤖 {ai_name}")
-st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI thông minh từ Gemini")
+st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI thông minh từ NguyenVu")
 
 # Nút xóa hội thoại
 if st.sidebar.button("🧹 Xóa hội thoại"):
@@ -128,8 +128,8 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # Hiển thị lịch sử hội thoại
-avatar_user = "https://i.imgur.com/7q6cP1B.png"
-avatar_ai = "https://i.imgur.com/N5uCbDu.png"
+avatar_user = "https://i.pinimg.com/236x/5e/e0/82/5ee082781b8c41406a2a50a0f32d6aa6.jpg"
+avatar_ai = "https://scontent.fhph2-1.fna.fbcdn.net/v/t39.30808-6/490392190_678654707977227_1765116453897262223_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=127cfc&_nc_ohc=llepRsrx304Q7kNvwGTUEHC&_nc_oc=AdlQWumfAI8cp0RzFwaHFOkm2IDY8d8mIbOzmQ0Ufp3gT7dVJ-15ytX03w0x1n-nOWzYl_gchD0SB5djyvj32P6e&_nc_zt=23&_nc_ht=scontent.fhph2-1.fna&_nc_gid=oWRsYsffWetuNZ-BZDxjGw&oh=00_AfEtc4wygalKzz8d9-lT7IyE3HIx1TLzhZXg-upq8NwjVA&oe=68012025"
 
 for role, msg in st.session_state.history:
     avatar = avatar_user if role == "user" else avatar_ai
