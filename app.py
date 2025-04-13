@@ -57,7 +57,7 @@ if "history" not in st.session_state:
 
 # Giao diện chat
 avatar_user = "https://i.pinimg.com/236x/5e/e0/82/5ee082781b8c41406a2a50a0f32d6aa6.jpg"
-avatar_ai = "assets/logo.png"
+avatar_ai = "https://scontent.fhph2-1.fna.fbcdn.net/v/t39.30808-6/490392190_678654707977227_1765116453897262223_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=127cfc&_nc_ohc=llepRsrx304Q7kNvwGTUEHC&_nc_oc=AdlQWumfAI8cp0RzFwaHFOkm2IDY8d8mIbOzmQ0Ufp3gT7dVJ-15ytX03w0x1n-nOWzYl_gchD0SB5djyvj32P6e&_nc_zt=23&_nc_ht=scontent.fhph2-1.fna&_nc_gid=zBHA-C-7y0ARfXgwBPsY8Q&oh=00_AfG_St5kPJmYyLHpnvIaEJq68FgqUdJ066uIvtenTnfIVw&oe=68012025"
 
 for role, msg in st.session_state.history:
     with st.container():
