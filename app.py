@@ -1,183 +1,166 @@
 import streamlit as st
 import os
-import json
+from dotenv import load_dotenv
 from PIL import Image
+from streamlit.components.v1 import html
 import base64
 import datetime
-import markdown
-from dotenv import load_dotenv  # 👈 THÊM
 
-load_dotenv()  # 👈 TẢI .env
+# Load Google API Key from secrets
+load_dotenv()
+api_key = st.secrets.get("GOOGLE_API_KEY", "")
 
-USER_DATA_FILE = "users.json"
+if not api_key:
+    st.error("⚠️ Chưa cấu hình GOOGLE_API_KEY. Vui lòng kiểm tra .env hoặc Secrets.")
+    st.stop()
 
-if not os.path.exists(USER_DATA_FILE):
-    with open(USER_DATA_FILE, "w") as f:
-        json.dump({}, f)
+try:
+    import google.generativeai as genai
+    genai.configure(api_key=api_key)
+except ModuleNotFoundError:
+    st.error("⚠️ Thư viện 'google-generativeai' chưa được cài đặt. Hãy chạy: pip install google-generativeai")
+    st.stop()
 
-def register_user(username, password):
-    with open(USER_DATA_FILE, "r") as f:
-        users = json.load(f)
-    if username in users:
-        return False
-    users[username] = password
-    with open(USER_DATA_FILE, "w") as f:
-        json.dump(users, f)
-    return True
+# PHẢI đặt set_page_config trước bất kỳ lệnh streamlit nào khác
+st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="🟡", layout="centered")
 
-def login_user(username, password):
-    with open(USER_DATA_FILE, "r") as f:
-        users = json.load(f)
-    if username in users and users[username] == password:
-        return True
-    return False
-
+# Default AI name
 DEFAULT_AI_NAME = "PhoGPT"
 
-st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="assets/logo.png", layout="centered")
-
-if "user_logged_in" in st.session_state and st.session_state.user_logged_in:
-    ai_name = f"Xin chào, {st.session_state.username}!"
-else:
-    ai_name = DEFAULT_AI_NAME
-
-def user_login_registration():
-    if "user_logged_in" not in st.session_state or not st.session_state.user_logged_in:
-        st.title("Đăng ký và Đăng nhập")
-        action = st.selectbox("Chọn hành động", ["Đăng nhập", "Đăng ký"])
-
-        username = st.text_input("Tên người dùng")
-        password = st.text_input("Mật khẩu", type="password")
-
-        if action == "Đăng ký":
-            if st.button("Đăng ký"):
-                if register_user(username, password):
-                    st.success("Đăng ký thành công! Bạn có thể đăng nhập ngay.")
-                else:
-                    st.error("Tên người dùng đã tồn tại. Vui lòng chọn tên khác.")
-        elif action == "Đăng nhập":
-            if st.button("Đăng nhập"):
-                if login_user(username, password):
-                    st.success("Đăng nhập thành công!")
-                    st.session_state.user_logged_in = True
-                    st.session_state.username = username
-                    st.rerun()
-                else:
-                    st.error("Tên người dùng hoặc mật khẩu không đúng.")
-    else:
-        st.session_state.user_logged_in = True
-        st.session_state.username = st.session_state.username
-
-user_login_registration()
-
-if "user_logged_in" in st.session_state and st.session_state.user_logged_in:
-    api_key = os.getenv("GOOGLE_API_KEY")  # 👈 DÙNG TỪ .env
-    if not api_key:
-        st.error("⚠️ Không tìm thấy GOOGLE_API_KEY trong biến môi trường.")
-        st.stop()
-
+# Khởi tạo model chat
+MODEL_NAME = "models/gemini-2.5-pro-exp-03-25"
+if "chat" not in st.session_state:
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(MODEL_NAME)
+        st.session_state.chat = model.start_chat()
     except Exception as e:
-        st.error(f"❌ Lỗi cấu hình API: {e}")
+        st.error(f"❌ Không thể khởi tạo mô hình Gemini: {e}")
         st.stop()
 
-    MODEL_NAME = "models/gemini-1.5-pro"
+# Sidebar cài đặt
+st.sidebar.title("⚙️ Cài đặt")
+ai_name = st.sidebar.text_input("Tên trợ lý AI", value=st.session_state.get("ai_name", DEFAULT_AI_NAME))
+dark_mode = st.sidebar.checkbox("🌙 Dark mode", value=False)
+st.session_state.ai_name = ai_name
 
-    st.sidebar.title("⚙️ Cài đặt")
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🗂️ Danh mục đoạn chat")
+# CSS tùy chỉnh giao diện + hiệu ứng
+hour = datetime.datetime.now().hour
+bg_color = "linear-gradient(135deg, #f5f7fa, #c3cfe2)" if 6 <= hour < 18 else "linear-gradient(135deg, #1e1e1e, #2b2b2b)"
+background_style = f"""
+    <style>
+    .main {{
+        background: {bg_color};
+        font-family: 'Segoe UI', sans-serif;
+        transition: background 1s ease-in-out;
+        animation: bgFade 20s ease-in-out infinite alternate;
+    }}
+    body, .main, .block-container {{
+        transition: all 0.5s ease-in-out;
+    }}
+    .dark .main {{
+        background: linear-gradient(135deg, #2c2c2c, #3a3a3a);
+        color: #f0f0f0;
+    }}
+    @keyframes bgFade {{
+        0% {{ background-position: 0% 50%; }}
+        100% {{ background-position: 100% 50%; }}
+    }}
+    .chat-box {{
+        background-color: #ffffffcc;
+        padding: 1.5rem;
+        border-radius: 1.5rem;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+        backdrop-filter: blur(8px);
+        transform: translateY(10px);
+        opacity: 0;
+        animation: fadeIn 0.6s ease-in-out forwards;
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }}
+    .avatar {{
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+    }}
+    @keyframes fadeIn {{
+        to {{ opacity: 1; transform: translateY(0); }}
+    }}
+    .typing {{
+        display: inline-block;
+        overflow: hidden;
+        border-right: .15em solid orange;
+        white-space: nowrap;
+        animation: typing 3s steps(40, end), blink .75s step-end infinite;
+    }}
+    @keyframes typing {{
+        from {{ width: 0 }}
+        to {{ width: 100% }}
+    }}
+    @keyframes blink {{
+        from, to {{ border-color: transparent }}
+        50% {{ border-color: orange }}
+    }}
+    .dark .chat-box {{
+        background-color: #444444aa;
+        color: #f0f0f0;
+    }}
+    </style>
+    <script>
+    const playSound = (type) => {{
+        const audio = new Audio(type === 'user' ? 'https://assets.mixkit.co/sfx/preview/mixkit-player-jump-377.wav' : 'https://assets.mixkit.co/sfx/preview/mixkit-confirmation-tone-2863.wav');
+        audio.volume = 0.4;
+        audio.play();
+    }}
+    window.playSound = playSound;
+    </script>
+"""
 
-    if "chat_logs" not in st.session_state:
-        st.session_state.chat_logs = []
+st.markdown(background_style, unsafe_allow_html=True)
 
-    for i, (ts, preview) in enumerate(st.session_state.chat_logs):
-        if st.sidebar.button(f"📌 {ts}", key=f"chat_{i}"):
-            st.session_state.history = preview
-            model = genai.GenerativeModel(MODEL_NAME)
-            st.session_state.chat = model.start_chat(history=preview)
+# Tiêu đề chính
+st.title(f"🤖 {ai_name}")
+st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI thông minh từ Gemini")
 
-    hour = datetime.datetime.now().hour
-    bg_color = "linear-gradient(135deg, #2c2c2c, #3a3a3a)" if hour >= 18 else "linear-gradient(135deg, #f5f7fa, #c3cfe2)"
-    background_style = f"""
-        <style>
-        .main {{
-            background: {bg_color};
-            font-family: 'Segoe UI', sans-serif;
-            transition: background 1s ease-in-out;
-        }}
-        .chat-box {{
-            background-color: #ffffffcc;
-            padding: 1.5rem;
-            border-radius: 1.5rem;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            margin-bottom: 1.5rem;
-            backdrop-filter: blur(8px);
-            transform: translateY(10px);
-            opacity: 0;
-            animation: fadeIn 0.6s ease-in-out forwards;
-        }}
-        .avatar {{
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-        }}
-        </style>
-    """
-    st.markdown(background_style, unsafe_allow_html=True)
+# Kiểm tra người dùng đã đăng nhập hay chưa
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
-    st.title(f"🤖 {ai_name}")
-    st.caption(f"🧠 Trò chuyện cùng {ai_name}, trợ lý AI thông minh từ Gemini")
+# Xử lý đăng nhập
+if st.button("Đăng nhập"):
+    st.session_state.logged_in = True
+    st.success("Đăng nhập thành công!")
 
+# Hiển thị chat nếu đã đăng nhập
+if st.session_state.logged_in:
+    # Nút xóa hội thoại
     if st.sidebar.button("🧹 Xóa hội thoại"):
         st.session_state.history = []
 
-    if st.sidebar.button("💬 Đoạn chat mới"):
-        if st.session_state.get("history"):
-            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-            st.session_state.chat_logs.insert(0, (timestamp, st.session_state.history.copy()))
-        st.session_state.history = []
-        try:
-            model = genai.GenerativeModel(MODEL_NAME)
-            st.session_state.chat = model.start_chat()
-        except Exception as e:
-            st.error(f"❌ Không thể khởi tạo mô hình mới: {e}")
-
-    if st.sidebar.button("📥 Tải đoạn chat"):
-        if st.session_state.get("history"):
-            filename = f"chat_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-            content = "\n".join([f"{r.upper()}: {m}" for r, m in st.session_state.history])
-            b64 = base64.b64encode(content.encode()).decode()
-            href = f'<a href="data:file/txt;base64,{b64}" download="{filename}">📄 Tải xuống {filename}</a>'
-            st.sidebar.markdown(href, unsafe_allow_html=True)
-
-    if "chat" not in st.session_state:
-        try:
-            model = genai.GenerativeModel(MODEL_NAME)
-            st.session_state.chat = model.start_chat()
-        except Exception as e:
-            st.error(f"❌ Không thể khởi tạo mô hình Gemini: {e}")
-            st.stop()
-
+    # Khởi tạo history nếu chưa có
     if "history" not in st.session_state:
         st.session_state.history = []
 
-    avatar_user = "https://i.pinimg.com/236x/5e/e0/82/5ee082781b8c41406a2a50a0f32d6aa6.jpg"
-    avatar_ai = "https://scontent.fhph2-1.fna.fbcdn.net/v/t39.30808-6/490392190_678654707977227_1765116453897262223_n.jpg"
+    # Hiển thị lịch sử hội thoại
+    avatar_user = "https://i.imgur.com/7q6cP1B.png"
+    avatar_ai = "https://i.imgur.com/N5uCbDu.png"
 
     for role, msg in st.session_state.history:
         avatar = avatar_user if role == "user" else avatar_ai
+        role_class = "user-msg" if role == "user" else "assistant-msg"
+        typing_class = "typing" if role == "assistant" else ""
         with st.container():
-            msg_html = markdown.markdown(msg)
             st.markdown(f'''
-                <div class="chat-box">
+                <div class="chat-box {role_class}">
                     <img class="avatar" src="{avatar}" alt="avatar" />
-                    <div>{msg_html}</div>
+                    <div class="{typing_class}">{msg}</div>
                 </div>
+                <script>playSound('{role}');</script>
             ''', unsafe_allow_html=True)
 
+    # Nhập tin nhắn người dùng
     user_input = st.chat_input(f"Nhập câu hỏi cho {ai_name}...")
 
     if user_input:
@@ -185,9 +168,10 @@ if "user_logged_in" in st.session_state and st.session_state.user_logged_in:
         with st.spinner(f"🔄 {ai_name} đang phản hồi..."):
             try:
                 response = st.session_state.chat.send_message(user_input)
-                reply = response.text.strip().rstrip("|")
+                reply = response.text
                 st.session_state.history.append(("assistant", reply))
 
+                # Tìm và hiển thị hình ảnh nếu có liên kết ảnh trong phản hồi
                 if any(ext in reply for ext in [".jpg", ".png", ".jpeg"]):
                     for word in reply.split():
                         if word.startswith("http") and any(ext in word for ext in [".jpg", ".png", ".jpeg"]):
@@ -197,3 +181,6 @@ if "user_logged_in" in st.session_state and st.session_state.user_logged_in:
                 error_msg = f"❌ Lỗi: {e}"
                 st.error(error_msg)
                 st.session_state.history.append(("assistant", error_msg))
+
+else:
+    st.write("Vui lòng đăng nhập để sử dụng PhoGPT.")
