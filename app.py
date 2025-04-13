@@ -3,8 +3,11 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 
-# Load API key cho Gemini (nếu có)
+# Cấu hình trang Streamlit - Đặt nó đầu tiên
 load_dotenv()
+st.set_page_config(page_title=f"🤖 PhoGPT AI", page_icon="🤖", layout="centered")
+
+# Load API key cho Gemini (nếu có)
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY", st.secrets.get("GOOGLE_API_KEY", "")))
 
 # Khởi tạo Gemini Chat nếu chưa có
@@ -16,9 +19,6 @@ if "chat" not in st.session_state:
 st.sidebar.header("⚙️ Tuỳ chỉnh")
 ai_name = st.sidebar.text_input("PhoGPT", value=st.session_state.get("ai_name", "PhoGPT"))
 st.session_state.ai_name = ai_name
-
-# Cấu hình giao diện Streamlit
-st.set_page_config(page_title=f"🤖 {ai_name} AI", page_icon="🤖", layout="centered")
 
 # Header
 st.title(f"🤖 {ai_name}")
