@@ -31,8 +31,8 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-# Chọn mô hình Gemini (mặc định là mô hình mới nhất có hỗ trợ generateContent)
-MODEL_NAME = "models/gemini-2.5-pro-exp-03-25"
+# Chọn mô hình Gemini 1.5 (phiên bản mượt hơn)
+MODEL_NAME = "models/gemini-1.5-v2"  # Đây là mô hình ổn định, mượt mà hơn
 
 # Khởi tạo model chat
 if "chat" not in st.session_state:
@@ -121,11 +121,11 @@ background_style = f"""
     }}
     </style>
     <script>
-    const playSound = (type) => {
+    const playSound = (type) => {{
         const audio = new Audio(type === 'user' ? 'https://assets.mixkit.co/sfx/preview/mixkit-player-jump-377.wav' : 'https://assets.mixkit.co/sfx/preview/mixkit-confirmation-tone-2863.wav');
         audio.volume = 0.4;
         audio.play();
-    }
+    }}
     window.playSound = playSound;
     </script>
 """
