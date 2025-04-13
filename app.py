@@ -23,7 +23,7 @@ DEFAULT_AI_NAME = "PhoGPT"
 
 # Load Google API Key
 load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY", "")
+api_key = st.secrets["google"]["GOOGLE_API_KEY"]
 
 if not api_key:
     st.error("⚠️ Chưa cấu hình GOOGLE_API_KEY. Vui lòng kiểm tra .env hoặc Secrets.")
