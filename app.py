@@ -1,3 +1,6 @@
+# NOTE: This code assumes a Streamlit environment where streamlit is installed
+# Ensure you install required packages: streamlit, python-dotenv, google-generativeai, pillow
+
 import streamlit as st
 import os
 from dotenv import load_dotenv
@@ -18,14 +21,14 @@ st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="🤖", layout="center
 # Đặt tên mặc định cho AI
 DEFAULT_AI_NAME = "PhoGPT"
 
-# Load Google API Key từ Secrets
-try:
-    api_key = st.secrets["google"]["GOOGLE_API_KEY"]
-except KeyError:
-    st.error("⚠️ Chưa cấu hình GOOGLE_API_KEY trong secrets.toml hoặc Streamlit Cloud secrets.")
+# Load Google API Key
+load_dotenv()
+api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY", "")
+
+if not api_key:
+    st.error("⚠️ Chưa cấu hình GOOGLE_API_KEY. Vui lòng kiểm tra .env hoặc Secrets.")
     st.stop()
 
-# Cấu hình Google API
 genai.configure(api_key=api_key)
 
 # Chọn mô hình Gemini (mặc định là mô hình mới nhất có hỗ trợ generateContent)
@@ -118,11 +121,11 @@ background_style = f"""
     }}
     </style>
     <script>
-    const playSound = (type) => {
+    function playSound(type) {{
         const audio = new Audio(type === 'user' ? 'https://assets.mixkit.co/sfx/preview/mixkit-player-jump-377.wav' : 'https://assets.mixkit.co/sfx/preview/mixkit-confirmation-tone-2863.wav');
         audio.volume = 0.4;
         audio.play();
-    }
+    }}
     window.playSound = playSound;
     </script>
 """
@@ -155,7 +158,7 @@ for role, msg in st.session_state.history:
                 <img class="avatar" src="{avatar}" alt="avatar" />
                 <div class="{typing_class}">{msg}</div>
             </div>
-            <script>playSound('{role}');</script>
+            <script>playSound("{role}");</script>
         ''', unsafe_allow_html=True)
 
 # Nhập tin nhắn người dùng
