@@ -45,7 +45,7 @@ selected_voice = st.sidebar.selectbox("🔊 Chọn giọng", ["Nữ chuẩn", "N
 # Logo & tiêu đề
 st.image("assets/logo.png", width=120)
 st.title(f"🤖 {ai_name}")
-st.caption("🧠 Trợ lý AI thông minh từ Gemini")
+st.caption("🧠 Trợ lý AI thông minh từ NguyenVu")
 
 # Nút reset
 if st.sidebar.button("🧹 Xóa hội thoại"):
@@ -56,8 +56,8 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # Giao diện chat
-avatar_user = "https://i.imgur.com/7q6cP1B.png"
-avatar_ai = "https://i.imgur.com/N5uCbDu.png"
+avatar_user = "https://cdn.kona-blue.com/upload/kona-blue_com/post/images/2024/09/18/457/avatar-mac-dinh-7.jpg"
+avatar_ai = "https://cdn-icons-png.flaticon.com/512/4712/4712126.png"
 
 for role, msg in st.session_state.history:
     with st.container():
