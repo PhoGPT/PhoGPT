@@ -5,15 +5,16 @@ from PIL import Image
 import base64
 import datetime
 import markdown
+from dotenv import load_dotenv  # 👈 THÊM
 
-# Tạo tệp lưu trữ người dùng nếu chưa có
+load_dotenv()  # 👈 TẢI .env
+
 USER_DATA_FILE = "users.json"
 
 if not os.path.exists(USER_DATA_FILE):
     with open(USER_DATA_FILE, "w") as f:
         json.dump({}, f)
 
-# Đăng ký người dùng
 def register_user(username, password):
     with open(USER_DATA_FILE, "r") as f:
         users = json.load(f)
@@ -24,7 +25,6 @@ def register_user(username, password):
         json.dump(users, f)
     return True
 
-# Đăng nhập người dùng
 def login_user(username, password):
     with open(USER_DATA_FILE, "r") as f:
         users = json.load(f)
@@ -41,7 +41,6 @@ if "user_logged_in" in st.session_state and st.session_state.user_logged_in:
 else:
     ai_name = DEFAULT_AI_NAME
 
-# Chức năng đăng ký và đăng nhập
 def user_login_registration():
     if "user_logged_in" not in st.session_state or not st.session_state.user_logged_in:
         st.title("Đăng ký và Đăng nhập")
@@ -62,22 +61,19 @@ def user_login_registration():
                     st.success("Đăng nhập thành công!")
                     st.session_state.user_logged_in = True
                     st.session_state.username = username
-                    st.rerun()  # ✅ ĐÃ SỬA TẠI ĐÂY
+                    st.rerun()
                 else:
                     st.error("Tên người dùng hoặc mật khẩu không đúng.")
     else:
         st.session_state.user_logged_in = True
         st.session_state.username = st.session_state.username
 
-# Gọi hàm đăng nhập và đăng ký
 user_login_registration()
 
-# Nếu đã đăng nhập thì hiển thị phần chính
 if "user_logged_in" in st.session_state and st.session_state.user_logged_in:
-    try:
-        api_key = st.secrets["GOOGLE_API_KEY"]
-    except KeyError:
-        st.error("⚠️ Không tìm thấy GOOGLE_API_KEY trong secrets.toml.")
+    api_key = os.getenv("GOOGLE_API_KEY")  # 👈 DÙNG TỪ .env
+    if not api_key:
+        st.error("⚠️ Không tìm thấy GOOGLE_API_KEY trong biến môi trường.")
         st.stop()
 
     try:
