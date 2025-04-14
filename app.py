@@ -6,6 +6,7 @@ import datetime
 import markdown
 from dotenv import load_dotenv
 from PIL import Image
+import hashlib
 
 # Load biến môi trường từ .env
 load_dotenv()
@@ -28,13 +29,17 @@ if not os.path.exists(USER_DATA_FILE):
     with open(USER_DATA_FILE, "w") as f:
         json.dump({}, f)
 
+# Mã hóa mật khẩu
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
 # Hàm đăng ký
 def register_user(username, password):
     with open(USER_DATA_FILE, "r") as f:
         users = json.load(f)
     if username in users:
         return False
-    users[username] = password
+    users[username] = hash_password(password)
     with open(USER_DATA_FILE, "w") as f:
         json.dump(users, f)
     return True
@@ -43,7 +48,7 @@ def register_user(username, password):
 def login_user(username, password):
     with open(USER_DATA_FILE, "r") as f:
         users = json.load(f)
-    return username in users and users[username] == password
+    return username in users and users[username] == hash_password(password)
 
 # Giao diện đăng nhập / đăng ký
 def user_login_registration():
@@ -91,22 +96,17 @@ if st.session_state.get("user_logged_in"):
     st.sidebar.markdown("---")
     st.sidebar.subheader("📁 Lịch sử đoạn chat")
 
-    if "chat_logs" not in st.session_state:
-        st.session_state.chat_logs = []
-
-    for i, (ts, preview) in enumerate(st.session_state.chat_logs):
-        if st.sidebar.button(f"📌 {ts}", key=f"log_{i}"):
-            st.session_state.history = preview
-            model = genai.GenerativeModel(MODEL_NAME)
-            st.session_state.chat = model.start_chat(history=preview)
+    history_file = f"history_{st.session_state.username}.json"
+    if os.path.exists(history_file):
+        with open(history_file, "r") as f:
+            st.session_state.history = json.load(f)
+    else:
+        st.session_state.history = []
 
     if st.sidebar.button("🧹 Xoá đoạn chat"):
         st.session_state.history = []
 
     if st.sidebar.button("💬 Đoạn chat mới"):
-        if st.session_state.get("history"):
-            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-            st.session_state.chat_logs.insert(0, (timestamp, st.session_state.history.copy()))
         st.session_state.history = []
         st.session_state.chat = genai.GenerativeModel(MODEL_NAME).start_chat()
 
@@ -118,12 +118,16 @@ if st.session_state.get("user_logged_in"):
             href = f'<a href="data:file/txt;base64,{b64}" download="{filename}">📄 Tải xuống {filename}</a>'
             st.sidebar.markdown(href, unsafe_allow_html=True)
 
+    if st.sidebar.button("🔒 Đăng xuất"):
+        st.session_state.user_logged_in = False
+        st.session_state.username = ""
+        st.session_state.history = []
+        st.success("👋 Đã đăng xuất!")
+        st.rerun()
+
     # Khởi tạo model lần đầu
     if "chat" not in st.session_state:
         st.session_state.chat = genai.GenerativeModel(MODEL_NAME).start_chat()
-
-    if "history" not in st.session_state:
-        st.session_state.history = []
 
     st.title(f"🤖 Xin chào, {ai_name}")
     st.caption("🧠 Trò chuyện cùng trợ lý AI PhoGPT")
@@ -160,3 +164,18 @@ if st.session_state.get("user_logged_in"):
                     error_msg = f"❌ Lỗi: {e}"
                     st.session_state.history.append(("assistant", error_msg))
                     render_message("assistant", error_msg, avatar_ai)
+
+    # Lưu lại lịch sử sau mỗi lần
+    with open(history_file, "w") as f:
+        json.dump(st.session_state.history, f, ensure_ascii=False, indent=2)
+
+    # Trang quản trị
+    if st.session_state.username == "admin":
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🛠️ Quản trị viên")
+        with open(USER_DATA_FILE, "r") as f:
+            all_users = json.load(f)
+        st.sidebar.text(f"👥 Tổng người dùng: {len(all_users)}")
+        st.sidebar.write("**Danh sách người dùng:**")
+        for user in all_users:
+            st.sidebar.write(f"- {user}")
