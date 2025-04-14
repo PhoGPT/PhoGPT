@@ -3,3 +3,4 @@ python-dotenv
 Pillow
 markdown
 google-generativeai
+dropbox

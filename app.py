@@ -7,47 +7,65 @@ import markdown
 from dotenv import load_dotenv
 from PIL import Image
 import hashlib
+import dropbox
 
 # Load biến môi trường từ .env
 load_dotenv()
 api_key = os.getenv("GOOGLE_API_KEY")
+dropbox_token = os.getenv("DROPBOX_ACCESS_TOKEN")
 
-if not api_key:
-    st.error("❌ Không tìm thấy GOOGLE_API_KEY trong file .env.")
+if not api_key or not dropbox_token:
+    st.error("❌ Không tìm thấy GOOGLE_API_KEY hoặc DROPBOX_ACCESS_TOKEN trong file .env.")
     st.stop()
 
 # Cấu hình Google Generative AI
 import google.generativeai as genai
 genai.configure(api_key=api_key)
 
+# Cấu hình Dropbox API
+dbx = dropbox.Dropbox(dropbox_token)
+
 # Cấu hình Streamlit
 st.set_page_config(page_title="🤖 PhoGPT AI", page_icon="assets/logo.png", layout="centered")
 
-# File dữ liệu người dùng
-USER_DATA_FILE = "users.json"
-if not os.path.exists(USER_DATA_FILE):
-    with open(USER_DATA_FILE, "w") as f:
-        json.dump({}, f)
+# File dữ liệu người dùng trên Dropbox
+USER_DATA_FILE = "/users.json"
 
 # Mã hóa mật khẩu
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+# Hàm tải lên file JSON vào Dropbox
+def upload_file(file_path, file_content):
+    try:
+        dbx.files_upload(json.dumps(file_content).encode(), file_path, mode=dropbox.files.WriteMode.overwrite)
+        print(f"File đã được tải lên: {file_path}")
+    except dropbox.exceptions.ApiError as err:
+        print(f"Lỗi khi tải lên file: {err}")
+
+# Hàm tải xuống file JSON từ Dropbox
+def download_file(file_path):
+    try:
+        metadata, res = dbx.files_download(file_path)
+        file_content = json.loads(res.content)
+        print(f"File đã được tải xuống: {file_path}")
+        return file_content
+    except dropbox.exceptions.ApiError as err:
+        print(f"Lỗi khi tải xuống file: {err}")
+        return {}
+
 # Hàm đăng ký
 def register_user(username, password):
-    with open(USER_DATA_FILE, "r") as f:
-        users = json.load(f)
+    users = download_file(USER_DATA_FILE)
     if username in users:
         return False
     users[username] = hash_password(password)
-    with open(USER_DATA_FILE, "w") as f:
-        json.dump(users, f)
+    upload_file(USER_DATA_FILE, users)
     return True
 
 # Hàm đăng nhập
 def login_user(username, password):
-    with open(USER_DATA_FILE, "r") as f:
-        users = json.load(f)
+    users = download_file(USER_DATA_FILE)
     return username in users and users[username] == hash_password(password)
 
 # Giao diện đăng nhập / đăng ký
@@ -96,10 +114,9 @@ if st.session_state.get("user_logged_in"):
     st.sidebar.markdown("---")
     st.sidebar.subheader("📁 Lịch sử đoạn chat")
 
-    history_file = f"history_{st.session_state.username}.json"
+    history_file = f"/history_{st.session_state.username}.json"
     if os.path.exists(history_file):
-        with open(history_file, "r") as f:
-            st.session_state.history = json.load(f)
+        st.session_state.history = download_file(history_file)
     else:
         st.session_state.history = []
 
@@ -166,16 +183,14 @@ if st.session_state.get("user_logged_in"):
                     render_message("assistant", error_msg, avatar_ai)
 
     # Lưu lại lịch sử sau mỗi lần
-    with open(history_file, "w") as f:
-        json.dump(st.session_state.history, f, ensure_ascii=False, indent=2)
+    upload_file(history_file, st.session_state.history)
 
     # Trang quản trị
     if st.session_state.username == "admin":
         st.sidebar.markdown("---")
         st.sidebar.subheader("🛠️ Quản trị viên")
-        with open(USER_DATA_FILE, "r") as f:
-            all_users = json.load(f)
-        st.sidebar.text(f"👥 Tổng người dùng: {len(all_users)}")
+        users = download_file(USER_DATA_FILE)
+        st.sidebar.text(f"👥 Tổng người dùng: {len(users)}")
         st.sidebar.write("**Danh sách người dùng:**")
-        for user in all_users:
+        for user in users:
             st.sidebar.write(f"- {user}")
